@@ -1,12 +1,13 @@
 import bpy
 import bmesh
+import bpy_extras
 import random
 import math
 import os
 
 # --- Configuration ---
 NUM_IMAGES = 1000
-IMG_RESOLUTION = 640
+IMG_RESOLUTION = 640  # Square images
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "synthetic_dataset")
@@ -135,10 +136,27 @@ def position_actors(grid_obj, ugv_obj, human_obj):
     bpy.context.view_layer.update()  # type: ignore
 
 
-# Call the function
-assert (bpy.context.scene is not None)
-grid = bpy.context.scene.objects['Grid']
-ugv = bpy.context.scene.objects['UGV']
-human = bpy.context.scene.objects['Human']
-create_maze(grid)
-position_actors(grid, ugv, human)
+def get_yolo_bbox(scene, cam, obj):
+    """
+    Projects the 3D bounding box of an object into the 2D camera space.
+    Returns the normalized coordinates in standard YOLO format:
+    (center_x, center_y, width, height).
+    """
+    bbox_corners = [obj.matrix_world @ bpy.mathutils.Vector(  # type: ignore
+        corner) for corner in obj.bound_box]
+    co_2d = [bpy_extras.object_utils.world_to_camera_view(
+        scene, cam, c) for c in bbox_corners]
+
+    x_coords = [c.x for c in co_2d]
+    # Invert Y for YOLO image coordinates
+    y_coords = [1.0 - c.y for c in co_2d]
+
+    min_x, max_x = max(0.0, min(x_coords)), min(1.0, max(x_coords))
+    min_y, max_y = max(0.0, min(y_coords)), min(1.0, max(y_coords))
+
+    width = max_x - min_x
+    height = max_y - min_y
+    center_x = min_x + (width / 2)
+    center_y = min_y + (height / 2)
+
+    return center_x, center_y, width, height
