@@ -7,7 +7,7 @@ import mathutils
 import os
 
 # --- Configuration ---
-NUM_IMAGES = 5
+NUM_IMAGES = 2
 
 # Get the directory of the currently open .blend file
 if not bpy.data.filepath:
@@ -238,10 +238,11 @@ def generate_dataset():
         label_path = os.path.join(LABEL_DIR, label_filename)
 
         with open(label_path, 'w') as f:
-            f.write(
-                f"{CLASS_UGV} {bbox_u[0]:.6f} {bbox_u[1]:.6f} {bbox_u[2]:.6f} {bbox_u[3]:.6f}\n")
-            f.write(
-                f"{CLASS_HUMAN} {bbox_h[0]:.6f} {bbox_h[1]:.6f} {bbox_h[2]:.6f} {bbox_h[3]:.6f}\n")
+            ugv_coords = " ".join([f"{v:.6f}" for v in bbox_u])
+            human_coords = " ".join([f"{v:.6f}" for v in bbox_h])
+
+            f.write(f"{CLASS_UGV} {ugv_coords}\n")
+            f.write(f"{CLASS_HUMAN} {human_coords}\n")
 
 
 if __name__ == "__main__":
