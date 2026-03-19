@@ -33,6 +33,34 @@ def setup_directories():
             os.makedirs(directory)
 
 
+def get_next_index(directory):
+    """
+    Scans the target directory for existing images and returns the next
+    available integer index to prevent overwriting previous renders.
+    """
+    if not os.path.exists(directory):
+        return 0
+
+    existing_files = os.listdir(directory)
+    indices = []
+
+    for filename in existing_files:
+        # Check if the file matches naming convention
+        if filename.startswith("maze_env_") and filename.endswith(".png"):
+            try:
+                # Extract the number from the string
+                # (e.g., 'maze_env_0005.jpg' -> 5)
+                num_str = filename.split('_')[-1].split('.')[0]
+                indices.append(int(num_str))
+            except ValueError:
+                continue
+
+    if not indices:
+        return 0
+
+    return max(indices) + 1
+
+
 def create_maze(grid_obj):
     """
     Applies a Depth First Search algorithm to carve a random maze.
@@ -184,9 +212,11 @@ def generate_dataset():
         print("ERROR: Missing Grid, UGV, Human, or Camera in the .blend file.")
         return
 
-    print(f"Starting generation of {NUM_IMAGES} samples...")
+    # Calculate where to start
+    start_index = get_next_index(IMAGE_DIR)
+    end_index = start_index + NUM_IMAGES
 
-    for i in range(NUM_IMAGES):
+    for i in range(start_index, end_index):
         # Randomize Environment
         create_maze(grid)
         position_actors(grid, ugv, human)
@@ -212,8 +242,6 @@ def generate_dataset():
                 f"{CLASS_UGV} {bbox_u[0]:.6f} {bbox_u[1]:.6f} {bbox_u[2]:.6f} {bbox_u[3]:.6f}\n")
             f.write(
                 f"{CLASS_HUMAN} {bbox_h[0]:.6f} {bbox_h[1]:.6f} {bbox_h[2]:.6f} {bbox_h[3]:.6f}\n")
-
-        print(f"Rendered and labeled frame {i+1}/{NUM_IMAGES}")
 
 
 if __name__ == "__main__":
