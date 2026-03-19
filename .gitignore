@@ -3,3 +3,5 @@
 *.blend1
 
 .mypy_cache
+
+data_generation/synthetic_dataset/
