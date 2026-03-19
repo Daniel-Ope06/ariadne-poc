@@ -6,8 +6,7 @@ import math
 import os
 
 # --- Configuration ---
-NUM_IMAGES = 1000
-IMG_RESOLUTION = 640  # Square images
+NUM_IMAGES = 5
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR = os.path.join(SCRIPT_DIR, "synthetic_dataset")
@@ -160,3 +159,57 @@ def get_yolo_bbox(scene, cam, obj):
     center_y = min_y + (height / 2)
 
     return center_x, center_y, width, height
+
+
+def generate_dataset():
+    """
+    Main execution loop.
+    """
+    setup_directories()
+
+    scene = bpy.context.scene
+    cam = scene.camera  # type: ignore
+    assert (scene is not None)
+
+    grid = scene.objects.get('Grid')
+    ugv = scene.objects.get('UGV')
+    human = scene.objects.get('Human')
+
+    if not all([grid, ugv, human, cam]):
+        print("ERROR: Missing Grid, UGV, Human, or Camera in the .blend file.")
+        return
+
+    print(f"Starting generation of {NUM_IMAGES} samples...")
+
+    for i in range(NUM_IMAGES):
+        # Randomize Environment
+        create_maze(grid)
+        position_actors(grid, ugv, human)
+
+        bpy.context.view_layer.update()  # type: ignore
+
+        # Render Output
+        img_filename = f"maze_env_{i:04d}.png"
+        scene.render.filepath = os.path.join(  # type: ignore
+            IMAGE_DIR, img_filename)
+        bpy.ops.render.render(write_still=True)
+
+        # Calculate Bounding Boxes
+        bbox_u = get_yolo_bbox(scene, cam, ugv)
+        bbox_h = get_yolo_bbox(scene, cam, human)
+
+        # Save YOLO Labels
+        label_filename = f"maze_env_{i:04d}.txt"
+        label_path = os.path.join(LABEL_DIR, label_filename)
+
+        with open(label_path, 'w') as f:
+            f.write(
+                f"{CLASS_UGV} {bbox_u[0]:.6f} {bbox_u[1]:.6f} {bbox_u[2]:.6f} {bbox_u[3]:.6f}\n")
+            f.write(
+                f"{CLASS_HUMAN} {bbox_h[0]:.6f} {bbox_h[1]:.6f} {bbox_h[2]:.6f} {bbox_h[3]:.6f}\n")
+
+        print(f"Rendered and labeled frame {i+1}/{NUM_IMAGES}")
+
+
+if __name__ == "__main__":
+    generate_dataset()
