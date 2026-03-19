@@ -3,6 +3,7 @@ import bmesh
 import bpy_extras
 import random
 import math
+import mathutils
 import os
 
 # --- Configuration ---
@@ -145,8 +146,8 @@ def get_yolo_bbox(scene, cam, obj):
     Returns the normalized coordinates in standard YOLO format:
     (center_x, center_y, width, height).
     """
-    bbox_corners = [obj.matrix_world @ bpy.mathutils.Vector(  # type: ignore
-        corner) for corner in obj.bound_box]
+    bbox_corners = [obj.matrix_world @
+                    mathutils.Vector(corner) for corner in obj.bound_box]
     co_2d = [bpy_extras.object_utils.world_to_camera_view(
         scene, cam, c) for c in bbox_corners]
 
