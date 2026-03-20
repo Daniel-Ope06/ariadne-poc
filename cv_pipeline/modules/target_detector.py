@@ -6,10 +6,10 @@ class TargetDetector:
     Identifies the UGV and Human targets within the maze.
     """
 
-    def __init__(self, img_size=640, grid_size=10):
+    def __init__(self, img_size=640, grid_size=30):
         self.img_size = img_size
         self.grid_size = grid_size
-        self.cell_size = img_size // grid_size
+        self.cell_size = img_size / grid_size
 
     def fake_detect(self, image_path, label_path):
         """
