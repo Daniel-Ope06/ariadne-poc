@@ -7,7 +7,10 @@ data_generation/synthetic_dataset/masks/*
 cv_pipeline/outputs/*
 
 # Keep the empty folders in the repo
-!*/.gitkeep
+!data_generation/synthetic_dataset/images/.gitkeep
+!data_generation/synthetic_dataset/labels/.gitkeep
+!data_generation/synthetic_dataset/masks/.gitkeep
+!cv_pipeline/outputs/.gitkeep
 
 # Others
 .vscode
