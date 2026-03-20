@@ -83,3 +83,43 @@ class ColorSegmenter:
                 break
 
         cv2.destroyAllWindows()
+
+    def generate_matrix(self, image_path):
+        """
+        Converts the maze image into a high-res binary pathfinding grid.
+        Returns the matrix (1=Path, 0=Wall) and the original image.
+        """
+        img = cv2.imread(image_path)
+        if img is None:
+            raise ValueError(f"Could not load .png image: {image_path}")
+
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        wall_mask = cv2.inRange(
+            img_rgb, self.lower_wall_rgb, self.upper_wall_rgb)
+
+        binary_grid = np.zeros((self.grid_size, self.grid_size), dtype=int)
+
+        for y in range(self.grid_size):
+            for x in range(self.grid_size):
+                # Calculate the exact pixel boundaries
+                y_start = int(y * self.cell_size)
+                y_end = int((y + 1) * self.cell_size)
+                x_start = int(x * self.cell_size)
+                x_end = int((x + 1) * self.cell_size)
+
+                # Extract the cell and shrink the view slightly
+                # by a 2-pixel margin.
+                # This ignores anti-aliasing blur
+                # right on the very edges of the walls.
+                margin = 2
+                chunk = wall_mask[
+                    y_start+margin:y_end-margin, x_start+margin:x_end-margin]
+
+                # If there are any white (wall) pixels inside this cell,
+                # set it as a wall (0)
+                if np.count_nonzero(chunk) > 0:
+                    binary_grid[y][x] = 0
+                else:
+                    binary_grid[y][x] = 1
+
+        return binary_grid, img
