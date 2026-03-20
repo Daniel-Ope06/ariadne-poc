@@ -10,6 +10,7 @@ from modules.visualizer import Visualizer
 
 def main():
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    OUTPUT_DIR = os.path.join(SCRIPT_DIR, "outputs")
     PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 
     IMG_PATH = os.path.join(PROJECT_ROOT, "data_generation",
@@ -47,8 +48,8 @@ def main():
     # segmenter.tune_thresholds(IMG_PATH)
     try:
         binary_matrix = segmenter.generate_matrix(IMG_PATH)
-        print(f"Matrix Shape: {binary_matrix.shape}\n\n")
-        print(binary_matrix, "\n\n")
+        print(f"Matrix Shape: {binary_matrix.shape}")
+        # print("\n\n", binary_matrix, "\n\n")
     except Exception as e:
         print(f"[!] Segmentation Error: {e}")
         return
@@ -73,8 +74,12 @@ def main():
         final_output = visualizer.draw_results(
             IMG_PATH, targets, optimal_path)  # type: ignore
 
+        filename = os.path.basename(IMG_PATH)
+        save_path = os.path.join(OUTPUT_DIR, f"solved_{filename}")
+        cv2.imwrite(save_path, final_output)  # type: ignore
+        print(f"[+] Image successfully saved to: {save_path}")
+
         print("[+] Rendering complete. Opening display window...")
-        # Pop open the window
         cv2.imshow("Routing Output", final_output)  # type: ignore
 
         # Keep the window open until the user presses any key
