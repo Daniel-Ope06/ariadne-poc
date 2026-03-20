@@ -1,9 +1,11 @@
 import os
+import cv2
 # import numpy as np
 
 from modules.target_detector import TargetDetector
 from modules.color_segmenter import ColorSegmenter
 from modules.path_finder import PathFinder
+from modules.visualizer import Visualizer
 
 
 def main():
@@ -19,6 +21,7 @@ def main():
     detector = TargetDetector(grid_size=GRID_RESOLUTION)
     segmenter = ColorSegmenter(grid_size=GRID_RESOLUTION)
     path_finder = PathFinder()
+    visualizer = Visualizer(grid_size=GRID_RESOLUTION)
 
     print("\n--- Target Detection ---")
     try:
@@ -63,6 +66,23 @@ def main():
             print(f"(Last 5 steps): ... {optimal_path[-5:]}")
     except Exception as e:
         print(f"[!] Pathfinding Error: {e}")
+
+    print("\n--- Visualization ---")
+    if optimal_path:  # type: ignore
+        print("[*] Drawing tactical overlay...")
+        try:
+            final_output = visualizer.draw_results(
+                IMG_PATH, targets, optimal_path)
+
+            print("[+] Rendering complete. Opening display window...")
+            # Pop open the window
+            cv2.imshow("Routing Output", final_output)  # type: ignore
+
+            # Keep the window open until the user presses any key
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        except Exception as e:
+            print(f"[!] Visualization Error: {e}")
 
 
 if __name__ == "__main__":
