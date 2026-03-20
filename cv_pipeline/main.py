@@ -46,8 +46,9 @@ def main():
     print("\n--- Color Segmentation ---")
     # segmenter.tune_thresholds(IMG_PATH)
     try:
-        binary_matrix, original_img = segmenter.generate_matrix(IMG_PATH)
-        print(f"Matrix Shape: {binary_matrix.shape}")
+        binary_matrix = segmenter.generate_matrix(IMG_PATH)
+        print(f"Matrix Shape: {binary_matrix.shape}\n\n")
+        print(binary_matrix, "\n\n")
     except Exception as e:
         print(f"[!] Segmentation Error: {e}")
         return
@@ -68,21 +69,19 @@ def main():
         print(f"[!] Pathfinding Error: {e}")
 
     print("\n--- Visualization ---")
-    if optimal_path:  # type: ignore
-        print("[*] Drawing tactical overlay...")
-        try:
-            final_output = visualizer.draw_results(
-                IMG_PATH, targets, optimal_path)
+    try:
+        final_output = visualizer.draw_results(
+            IMG_PATH, targets, optimal_path)  # type: ignore
 
-            print("[+] Rendering complete. Opening display window...")
-            # Pop open the window
-            cv2.imshow("Routing Output", final_output)  # type: ignore
+        print("[+] Rendering complete. Opening display window...")
+        # Pop open the window
+        cv2.imshow("Routing Output", final_output)  # type: ignore
 
-            # Keep the window open until the user presses any key
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
-        except Exception as e:
-            print(f"[!] Visualization Error: {e}")
+        # Keep the window open until the user presses any key
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    except Exception as e:
+        print(f"[!] Visualization Error: {e}")
 
 
 if __name__ == "__main__":
