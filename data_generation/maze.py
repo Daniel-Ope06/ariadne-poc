@@ -7,7 +7,7 @@ import mathutils
 import os
 
 # --- Configuration ---
-NUM_IMAGES = 2
+NUM_IMAGES = 1000
 
 # Get the directory of the currently open .blend file
 if not bpy.data.filepath:
