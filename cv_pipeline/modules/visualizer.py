@@ -22,7 +22,7 @@ class Visualizer:
             "text": (255, 255, 255)  # White
         }
 
-    def draw_results(self, image_path, targets, optimal_path):
+    def __call__(self, image_path, targets, optimal_path):
         """
         Draws the bounding boxes, labels, and path on the image.
 
