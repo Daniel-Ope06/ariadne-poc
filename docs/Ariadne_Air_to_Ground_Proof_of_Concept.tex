@@ -83,6 +83,16 @@ To successfully achieve optical-based autonomous routing, the proposed pipeline 
     \item \textbf{Tactical Pathfinding:} The system must compute an optimal, collision-free route from the start node to the target node using the segmented map, and project this route back onto the original visual space.
 \end{enumerate}
 
+\vspace{0.5cm}
+
+\section{Literature Review}
+
+The difficulty of autonomous navigation in environments without GPS has led to significant research into alternative localisation and mapping methods. 
+
+\vspace{0.5cm}
+
+Recent research on Unmanned Ground Vehicles (UGVs) has extensively explored the use of environment-specific, non-visual sensors to overcome the limitations posed by degraded optical conditions. The project applied \textbf{magnetic field map-based localisation}, which uses natural magnetic anomalies as navigational features \cite{11219502}. This approach employs Gaussian Process (GP) Regression to create high-resolution magnetic signature maps. It also combines a hybrid Particle Filter (PF) and Unscented Kalman Filter (UKF) to estimate the trajectory of UGVs. In tests conducted in indoor corridors, this methodology demonstrated remarkable resilience, reducing localisation errors by as much as 45\% compared to standard particle filter (PF)-based methods. However, this approach relies entirely on localised, ground-level sensing, meaning that the UGV must physically navigate and explore the environment to use the map effectively. \textbf{Ariadne} addresses this critical gap by changing the approach from \textit{"ground-level discovery"} to \textit{"overhead deterministic routing,"} enabling the UGV to receive an optimal path before encountering any obstacles.
+
 \bibliographystyle{ieeetr}
 \bibliography{references}
     
