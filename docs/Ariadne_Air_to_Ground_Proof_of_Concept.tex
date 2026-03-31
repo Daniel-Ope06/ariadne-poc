@@ -57,4 +57,33 @@
 
 \maketitle
 
+\section{Problem Statement and Contextualisation}
+
+\quad In classical mythology, the labyrinth of Crete was navigated with \textit{"Ariadne’s thread,"} a lifeline provided by an outside observer to guide a vulnerable explorer safely through a complex, unknown maze. Modern autonomous robotics faces a similar problem. Unmanned Ground Vehicles (UGVs) used in search and rescue (SAR) or tactical situations typically rely on Global Positioning Systems (GPS) or active sensor emissions, such as LiDAR, to determine their location and plan navigable routes. \cite{11219502}. However, in highly contested or unstructured environments, such as disaster zones, deep forest canopies, or electronic warfare scenarios, these signals can often be degraded, obstructed, or intentionally jammed \cite{8741612}.
+
+\vspace{0.5cm}
+
+When active signals fail, autonomous ground navigation systems become functionally blind. To address this critical vulnerability, this project presents \textbf{Ariadne}: an autonomous \textbf{air-to-ground optical routing pipeline}. This system acts as a modern digital thread, utilising a single high-altitude RGB image captured by an Unmanned Aerial Vehicle (UAV). It passively maps the environment below, identifies navigable corridors, and calculates the optimal path for the ground asset.
+
+\vspace{0.5cm}
+
+To test the core logic of the computer vision and pathfinding modules without the interference of unpredictable lighting conditions or organic textures found in the real world, this study uses procedurally generated mazes as a synthetic proof-of-concept. The maze environment acts as a controlled sandbox to isolate and evaluate the core algorithmic pipeline before scaling up to more complex, unstructured terrains.
+
+\vspace{0.5cm}
+
+\subsection{System Requirements}
+
+To successfully achieve optical-based autonomous routing, the proposed pipeline must fulfil the following sequential requirements:
+
+\begin{enumerate}
+    \item \textbf{Target Extraction:} The system must accurately detect and extract the pixel coordinates of the starting agent (the UGV) and the target destination (a human or objective) from the overhead image.
+
+    \item \textbf{Environmental Segmentation:} The system must classify the environment, accurately dividing the image into strictly traversable (pathways) and non-traversable (walls/obstacles) terrain.
+
+    \item \textbf{Tactical Pathfinding:} The system must compute an optimal, collision-free route from the start node to the target node using the segmented map, and project this route back onto the original visual space.
+\end{enumerate}
+
+\bibliographystyle{ieeetr}
+\bibliography{references}
+    
 \end{document}
