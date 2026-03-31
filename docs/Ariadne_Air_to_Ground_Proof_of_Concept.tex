@@ -159,13 +159,115 @@ To achieve this, a custom dataset of procedural 2D mazes was generated using the
 
 \vspace{0.5cm}
 
-\noindent\begin{minipage}{\textwidth}
+\noindent\begin{minipage}{1\linewidth}
     \begin{lstlisting}[language=Python, caption=Normalised bounding box coordinate output, label=lst:bbox_output]
     0 0.844262 0.057377 0.039220 0.034991
     1 0.457275 0.653128 0.068142 0.071114
     \end{lstlisting}
 \end{minipage}
 
+\subsection{Target Extraction}
+
+\quad Before an autonomous route can be calculated, the system must first determine the spatial coordinates of the start and end points within the unknown environment. In a real-world search and rescue (SAR) or tactical scenario, these points represent the Unmanned Ground Vehicle (the starting point) and the human target (the destination).
+
+\vspace{0.5cm}
+
+To achieve this, \textit{Ariadne} uses a custom-trained object detection model built on the YOLO (You Only Look Once) framework. YOLO was chosen for this phase because of its advanced inference speed and high bounding box precision, which are essential for real-time tactical applications. The model is trained to analyse raw RGB overhead images captured by the UAV and to isolate the specific pixel clusters representing the UGV (Unmanned Ground Vehicle) and human subjects (Figure~\ref{fig:yolo_sample}). The training process utilised the Ultralytics framework and was optimised for the specific resolution of the synthetic dataset ($640\times640$px), as outlined in Listing~\ref{lst:yolo_train}.
+
+\vspace{0.5cm}
+
+\noindent\begin{minipage}{1\linewidth}
+    \begin{lstlisting}[language=Python, caption=YOLO object detection model training configuration, label=lst:yolo_train]
+# Train the model
+model = YOLO('yolo26s.pt') # Load YOLO26 small model
+
+# Save the results directly on Google Drive
+gdrive_save_dir = '/content/gdrive/MyDrive/Colab Notebooks/overhead-sar-navigation/object_detection/runs'
+
+results = model.train(
+  data='/content/dataset.yaml',
+  epochs=50,          # 50 complete passes through the 800 training images
+  imgsz=640,          # Standard 640x640 resolution
+  batch=16,           # Process 16 images simultaneously in VRAM
+  device=0,           # Force PyTorch to utilize the T4 GPU
+  project=gdrive_save_dir, # Auto-backs up weights to Google Drive
+  name='maze_actor_detection_v1' # Name of the output subfolder
+)
+    \end{lstlisting}
+\end{minipage}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.6\linewidth]{images/yolo_maze_env_0528.png}
+    \caption{YOLO object detection model successfully extracting the UGV and human.}
+    \label{fig:yolo_sample}
+\end{figure}
+
+\subsubsection{Spatial Discretisation}
+
+\quad After successfully drawing bounding boxes over the agents, the continuous visual space must be converted into a discrete mathematical format that is suitable for classical pathfinding algorithms. This spatial discretisation is inspired by the approach to aerial segmentation developed by Doghmane and Boukari \cite{Doghmane_Boukari_2024}. In their research, high-resolution remote sensing imagery was systematically divided into fixed $256\times256$ spatial patches. This technique maximised computational efficiency while preserving important spatial relationships.
+
+\newpage
+
+\hspace{-1.5em}\textit{Ariadne} applies this philosophy by downsampling the continuous optical feed into a grid defined by one main parameter (\texttt{grid\_size}). From this parameter, the spatial constraints are mathematically derived:
+
+\begin{enumerate}
+    \item \textbf{Image Size:} The raw pixel resolution of the square overhead optical input (e.g., $640\times640$).
+
+    \item \textbf{Grid Size:} The primary defined parameter establishing the matrix dimensions (e.g., $30\times30$).
+
+    \item \textbf{Cell Size:} A derived value calculated by dividing the \texttt{img\_size} by the \texttt{grid\_size}, representing the exact pixel span of a single grid cell.
+\end{enumerate}
+
+\vspace{0.5cm}
+
+To turn the YOLO bounding boxes into usable grid nodes, the extraction module finds the exact centre pixel of each bounding box. It then divides these pixel coordinates by the cell size and rounds them to whole numbers to find the specific $(x, y)$ grid index where the agent is located. Finally, a bounding function ensures these values stay within the limits of the matrix array. This process is shown in Listing~\ref{lst:spatial_discretisation}.
+
+\vspace{0.5cm}
+
+\noindent\begin{minipage}{1\linewidth}
+    \begin{lstlisting}[language=Python, caption=Translating visual bounding boxes into bounded discrete grid nodes, label=lst:spatial_discretisation]
+# Calculate dimensions
+px_w = x2 - x1
+px_h = y2 - y1
+
+# Calculate exact center pixel
+px_x = x1 + (px_w // 2)
+px_y = y1 + (px_h // 2)
+
+# Convert pixel centers to grid indices for pathfinding
+grid_x = int(px_x // self.cell_size)
+grid_y = int(px_y // self.cell_size)
+
+# Clamp values to ensure they never exceed grid bounds
+grid_x = max(0, min(self.grid_size - 1, grid_x))
+grid_y = max(0, min(self.grid_size - 1, grid_y))
+    \end{lstlisting}
+\end{minipage}
+
+\vspace{0.5cm}
+
+\subsubsection{Grid Resolution Tuning}
+
+\quad The selection of the grid size parameter is a critical optimisation problem that directly dictates both the computational efficiency and the physical safety of the autonomous route.
+
+\vspace{0.5cm}
+
+\hspace{-1.5em}Tuning the grid resolution requires balancing two competing extremes:
+
+\begin{enumerate}
+  \item \textbf{Low Resolution (Under-sampling):} A smaller grid size significantly reduces the dimensionality of the search matrix, leading to exceptionally fast A* execution times. However, if the grid resolution is too low, the system suffers from \textbf{spatial aliasing}. Thin boundary walls and traversable pathways are combined into the same discrete cell, leading the algorithm to falsely classify safe routes as blocked and frequently resulting in a "no route found" error.
+  
+  \item \textbf{High Resolution (Over-sampling):} Conversely, a larger grid size heavily increases the complexity of the matrix, driving up the computational time required for the pathfinding module to solve the route. Furthermore, in a highly granular grid, the A* algorithm's mathematical optimisation will inherently draw the shortest possible path, which often results in the route \textbf{"hugging" the absolute edges} of walls and corners. For a physical UGV, this lack of spatial tolerance introduces a severe risk of mechanical collision.
+\end{enumerate}
+
+\vspace{0.5cm}
+
+To achieve a balance between computational latency and navigational safety, \textit{Ariadne} uses a proportional tuning strategy informed by the known dimensions of its procedural environment. Since the synthetic mazes are created on a basic $10\times10$ logical grid, the optical pathfinding matrix has been specifically adjusted to a $30\times30$ resolution.
+
+\vspace{0.5cm}
+
+This establishes a precise $1:9$ spatial mapping, where each cell of the original maze corresponds to a $3\times3$ block of cells in the pathfinding matrix. This specific ratio ensures that the thin boundary walls occupy separate grid nodes from the traversable corridors. It provides an adequate spatial buffer to prevent the pathfinder from clipping the edges of the walls, completely eliminates the risk of path occlusion, and maintains a sufficiently lightweight matrix for fast algorithmic execution.
 
 \newpage
 \bibliographystyle{ieeetr}
