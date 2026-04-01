@@ -269,8 +269,155 @@ To achieve a balance between computational latency and navigational safety, \tex
 
 This establishes a precise $1:9$ spatial mapping, where each cell of the original maze corresponds to a $3\times3$ block of cells in the pathfinding matrix. This specific ratio ensures that the thin boundary walls occupy separate grid nodes from the traversable corridors. It provides an adequate spatial buffer to prevent the pathfinder from clipping the edges of the walls, completely eliminates the risk of path occlusion, and maintains a sufficiently lightweight matrix for fast algorithmic execution.
 
-\newpage
-\bibliographystyle{ieeetr}
-\bibliography{references}
-    
-\end{document}
+\vspace{0.5cm}
+
+\subsection{Environmental Segmentation}
+
+\quad Once the start and goal nodes are clearly defined, the next step in the pipeline is to classify the terrain in between. This involves dividing the optical feed into two categories: traversable paths and non-traversable boundaries, such as walls and obstacles. To assess the balance between computational latency and environmental robustness, this study develops and tests two different segmentation methods: a classical computer vision technique known as Colour Heuristics and a deep learning method called Neural Semantic Segmentation.
+
+\vspace{0.5cm}
+
+\subsubsection{Approach A: Classical Color Heuristics}
+
+\quad The first approach uses classical, deterministic computer vision techniques using the OpenCV library. This module (\texttt{color\_segmenter.py}) applies predefined colour thresholding arrays to accurately isolate traversable paths based solely on raw pixel values.
+
+\vspace{0.5cm}
+
+The primary advantage of this heuristic approach is its exceptional computational efficiency. Because it relies on simple array masking rather than passing tensors through neural layers, it executes in milliseconds. This makes it highly attractive for hardware with severe SWaP (Size, Weight, and Power) constraints.
+
+\vspace{0.5cm}
+
+However, this methodology is inherently brittle. Because the algorithm has no contextual understanding of the environment's topology, it is highly susceptible to stochastic noise. Minor variances in simulated lighting, shadows, or even the pixel anti-aliasing along the edges of the generated walls can cause the thresholding to fail, resulting in fragmented masks that trap the pathfinding algorithm.
+
+\vspace{0.5cm}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\linewidth]{images/color_threshold_tuner.png}
+    \caption{Interactive colour thresholding tuner used to set the optimal segmentation boundaries for Approach A.}
+    \label{fig:color_tuner}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[t]{0.49\linewidth}
+    \centering
+        \includegraphics[width=1\linewidth]{images/maze_env_0335.png}
+        \caption{RGB Overhead Image}
+        \label{fig:rgb-2}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\linewidth}
+    \centering
+        \includegraphics[width=1\linewidth]{images/maze_env_0335_color.png}
+        \caption{Colour Heuristic Mask}
+        \label{fig:bsm-2}
+    \end{subfigure}
+    \caption{Environmental segmentation using colour thresholding. Note the susceptibility to anti-aliasing noise at the wall boundaries}
+    \label{fig:rgb-bsm-2}
+\end{figure}
+
+\vspace{0.5cm}
+
+\subsubsection{Approach B: Neural Semantic Segmentation (U-Net)}
+
+\quad To address the limitations of pure colour thresholding, the second approach uses a deep convolutional neural network (\texttt{unet\_segmenter.py}). This method builds on architectural techniques discussed in the literature for extracting roads from aerial images \cite{Doghmane_Boukari_2024}. It uses a PyTorch implementation of the U-Net architecture, enhanced by a pre-trained ResNet34 backbone to improve feature extraction.
+
+\vspace{0.5cm}
+
+Unlike the heuristic method, the U-Net model does not isolate pixels based on raw colour values. Instead, through its encoder-decoder structure, it learns the underlying spatial geometry and structural shape of the walls versus the corridors. This enables the model to produce highly accurate, continuous binary masks that are completely agnostic to lighting variations or texturing noise.
+
+\vspace{0.5cm}
+
+The model was trained using a cloud service (Google Colab) with the procedurally generated dataset. The inference execution is handled locally by the \textit{Ariadne} pipeline to simulate edge deployment.
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[t]{0.49\linewidth}
+    \centering
+        \includegraphics[width=1\linewidth]{images/maze_env_0335.png}
+        \caption{RGB Overhead Image}
+        \label{fig:rgb-3}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\linewidth}
+    \centering
+        \includegraphics[width=1\linewidth]{images/maze_env_0335_unet.png}
+        \caption{Neural Semantic Mask}
+        \label{fig:bsm-3}
+    \end{subfigure}
+    \caption{Environmental segmentation using the U-Net neural architecture, producing a robust and structurally aware binary mask.}
+    \label{fig:rgb-bsm-3}
+\end{figure}
+
+\vspace{0.5cm}
+
+\subsubsection{Deployment Criteria}
+
+\quad The choice to route optical data through the Colour Heuristic or the Neural Semantic module determines the overall effectiveness of the navigation system, which depends entirely on the operational environment.
+
+\begin{itemize}
+  \item \textbf{When to deploy the Colour Heuristic:} This method is only practical in highly controlled environments that are synthetically perfect and have consistent lighting. Its application in modern robotics is restricted to small, weight-and-power-constrained (SWaP) edge devices (such as micro-drones) functioning in clean, predictable indoor settings where the computational demands of a neural network cannot be met.
+  
+  \item \textbf{When to deploy Neural Semantic (U-Net):} This is the required architecture for any transition to real-world, unstructured environments (such as disaster zones or forest canopies). While inference takes marginally longer and requires a GPU or localised AI accelerator (such as an NVIDIA Jetson), the U-Net's ability to maintain structural awareness through lighting shifts, partial occlusions, and environmental noise makes it the only viable solution to guarantee collision-free UGV routing.
+\end{itemize}
+
+\vspace{0.5cm}
+
+\subsection{Tactical Pathfinding}
+
+\quad With the environmental grid successfully segmented into traversable and non-traversable nodes, the final phase of the \textit{Ariadne} pipeline is to compute an optimal, collision-free route from the UGV's starting coordinate to the human target. To achieve this, the system uses the A* (A-Star) algorithm.
+
+\vspace{0.5cm}
+
+\subsubsection{Algorithm Justification and Movement Constraints}
+
+\quad Modern robots often use sampling-based algorithms, like Rapidly-exploring Random Trees (RRT), to navigate complex movement paths. These algorithms work well in continuous, high-dimensional spaces. However, \textit{Ariadne} simplifies the environment by turning it into a clear, two-dimensional grid. Because of this, a grid-based search method is more efficient and effective for finding paths.
+
+\vspace{0.5cm}
+
+To keep the ground agent safe, the algorithm only allows movement in four directions: up, down, left, and right. This restriction helps prevent the UGV from accidentally hitting tight corners. A* algorithm was chosen instead of Dijkstra’s Algorithm because it uses a spatial strategy that quickly narrows down the search area and moves directly toward the goal.
+
+\vspace{0.5cm}
+
+\subsubsection{Heuristic and Cost Matrix Integration}
+
+\quad The A* algorithm works well because of a simple formula: $f(n) = g(n) + h(n)$. In this formula, $g(n)$ is the exact cost to get from the starting point to the current point $n$, while $h(n)$ is an estimate of the cost to get from point $n$ to the goal.
+
+\vspace{0.5cm}
+
+To calculate $g(n)$, the pathfinder uses the binary segmentation mask created by the U-Net module. This mask acts as a map for obstacles: if a neighbouring cell has a pixel value of 0 (indicating a wall), the algorithm will not consider that node, making it impassable. Cells that can be traversed (with a pixel value of 1) have a step cost of 1.
+
+\vspace{0.5cm}
+
+To calculate the heuristic $h(n)$, the system uses the \textbf{Manhattan Distance}. Since the UGV can only move in four directions on a grid and not diagonally, the Manhattan Distance is a suitable choice. It is calculated as:
+
+$$h(n) = |x_{target} - x_{current}| + |y_{target} - y_{current}|$$
+
+\vspace{0.25cm}
+
+\hspace{-1.5em}This method is admissible and consistent, meaning it will never overestimate the true cost to reach the target. This code is shown in Listing \ref{lst:heuristic_logic}.
+
+\vspace{0.5cm}
+
+\noindent\begin{minipage}{1\linewidth}
+    \begin{lstlisting}[language=Python, caption=A* movement constraints and Manhattan heuristic calculation, label=lst:heuristic_logic]
+def __init__(self):
+    # We restrict movement to 4 cardinal directions (Up, Down, Left, Right)
+    # to prevent the UGV from clipping diagonally through wall corners.
+    self.movements = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+def calc_manhattan_dist(self, current_node, target_node):
+    """
+    Calculates the grid-based distance between two points.
+    It counts the strict horizontal and vertical steps required.
+    """
+    return abs(
+        target_node[0] - current_node[0]) + abs(
+        target_node[1] - current_node[1])
+    \end{lstlisting}
+\end{minipage}
+
+\subsubsection{Route Output}
+
+\quad The algorithm uses a priority queue from Python's \texttt{heapq} module to find the node with the lowest $f(n)$ score. When it successfully reaches the target node, it traces back the path of evaluated nodes to the starting node using a recorded history. This path is then reversed to create the best route as a list of $(x, y)$ grid coordinates. In a live deployment, this list acts as the waypoint list sent to the UGV’s flight controller, completing the Air-to-Ground optical navigation loop.
